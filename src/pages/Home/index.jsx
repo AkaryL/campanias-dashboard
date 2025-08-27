@@ -4,7 +4,21 @@ import { useCampaigns } from "../../context/CampaignsContext";
 import RouterTable from "../../components/RouterTable";
 
 export default function Home() {
-  const { routers, loadingRouters, fetchRouters, updateRouter } = useCampaigns();
+  const { routers, loadingRouters, fetchRouters, updateRouter, setRouters } = useCampaigns();
+
+  const handleSaveRouter = async (routerActualizado) => {
+    // Optimista
+    setRouters(prev =>
+      prev.map(r => r.id === routerActualizado.id ? { ...r, ...routerActualizado } : r)
+    );
+    try {
+      await updateRouter(routerActualizado.id, routerActualizado);
+    } catch (e) {
+      console.error(e);
+      alert("No se pudo guardar el router");
+      await fetchRouters(); // revertir/sincronizar
+    }
+  };
 
   useEffect(() => {
     fetchRouters();
@@ -24,7 +38,7 @@ export default function Home() {
       {loadingRouters ? (
         <div className="text-sm text-slate-500">Cargando routers…</div>
       ) : (
-        <RouterTable routers={routers} onChangeGroup={handleChangeGroup} />
+        <RouterTable routers={routers} onSaveRouter={handleSaveRouter} />
       )}
     </section>
   );

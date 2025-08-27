@@ -12,11 +12,11 @@ export const CampaignsProvider = ({ children }) => {
   const [loadingUpdateRouter, setLoadingUpdateRouter] = useState(false);
   const [error, setError] = useState(null);
   const [options, setOptions] = useState({
-  edad: [],
-  genero: [],
-  campania: [],
-  group_name: [],
-});
+    edad: [],
+    genero: [],
+    campania: [],
+    group_name: [],
+  });
 
   // (opcional) snapshot para revertir
   const prevSnapshotRef = useRef([]);
@@ -51,41 +51,43 @@ export const CampaignsProvider = ({ children }) => {
     return { ...base, ...patch };
   };
 
+  const cleanPayload = (obj = {}) =>
+    Object.fromEntries(
+      Object.entries(obj).filter(
+        ([, v]) => v !== undefined && v !== null && v !== ""
+      )
+  );
+
   // UPDATE con ID en la URL y BODY completo
   const updateRouter = async (id, patch) => {
     setLoadingUpdateRouter(true);
     setError(null);
 
-    // Encuentra el router actual
-    const current = routers.find((r) => r.id === id);
-    if (!current) {
-      // Si no está en memoria, trae la lista primero
-      await fetchRouters();
-    }
-    const currentAfterFetch = current || routers.find((r) => r.id === id);
-    if (!currentAfterFetch) {
-      setLoadingUpdateRouter(false);
-      throw new Error(`Router ${id} no encontrado para actualizar`);
-    }
-
-    // Payload completo requerido por tu PUT
-    const payload = buildRouterPayload(currentAfterFetch, patch);
-
-    // Guarda snapshot para revertir si falla
+    // Guardar snapshot para revertir si falla
     prevSnapshotRef.current = routers;
 
-    // Optimista (solo lo que cambias)
-    setRouters((curr) => curr.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+    // Optimista
+    setRouters(curr =>
+      curr.map(r => (r.id === id ? { ...r, ...patch } : r))
+    );
 
     try {
-      const { data } = await axios.put(`${API}/api/v2/campaigns/routers/${id}`, payload);
+      // Limpiar antes de enviar
+      const payload = cleanPayload(patch);
 
-      // MERGE con lo que responda el back (por si regresa updated_at, etc.)
-      setRouters((curr) => curr.map((r) => (r.id === id ? { ...r, ...data } : r)));
+      const { data } = await axios.put(
+        `${API}/api/v2/campaigns/routers/${id}`,
+        payload
+      );
+
+      // Merge con lo que devuelve el backend
+      setRouters(curr =>
+        curr.map(r => (r.id === id ? { ...r, ...data } : r))
+      );
 
       return data;
     } catch (err) {
-      // Revertir exactamente
+      // Revertir si falla
       setRouters(prevSnapshotRef.current);
       setError(err);
       throw err;
@@ -94,7 +96,7 @@ export const CampaignsProvider = ({ children }) => {
     }
   };
 
-  return (
+   return (
     <CampaignsContext.Provider
       value={{
         routers,
@@ -103,6 +105,7 @@ export const CampaignsProvider = ({ children }) => {
         error,
         fetchRouters,
         updateRouter,
+        setRouters,
       }}
     >
       {children}
