@@ -1,0 +1,47 @@
+// Ejemplo basado en tu captura. Agrega/quita campos según tu tabla real.
+export const initialRouters = [
+  {
+    id: 98,
+    serial: null,
+    mac: "2c:3f:0b:b2:36:d5",
+    device_name: "SITEUR-17-L3",
+    estacion: "ESTACIÓN PERIFÉRICO BELENES (ELEVADA)",
+    municipio: "Guadalajara",
+    latitud: 20.73817778,
+    longitud: -103.4032239,
+    group_name: "A",
+  },
+  {
+    id: 97,
+    serial: null,
+    mac: "2c:3f:0b:b2:4d:4e",
+    device_name: "SITEUR-14-L3",
+    estacion: "ESTACIÓN PLAZA PATRIA (ELEVADA)",
+    municipio: "Guadalajara",
+    latitud: 20.712249,
+    longitud: -103.375032,
+    group_name: "B",
+  },
+  {
+    id: 96,
+    serial: null,
+    mac: "2c:3f:0b:b2:43:89",
+    device_name: "SITEUR-12-L3",
+    estacion: "ESTACIÓN AVILA CAMACHO (ELEVADA)",
+    municipio: "Guadalajara",
+    latitud: 20.69937143,
+    longitud: -103.3547679,
+    group_name: "C",
+  },
+  {
+    id: 95,
+    serial: null,
+    mac: "2c:3f:0b:b2:8b:c5",
+    device_name: "SITEUR-5-L3",
+    estacion: "ESTACIÓN REVOLUCIÓN (ELEVADA)",
+    municipio: "Guadalajara",
+    latitud: 20.6510304,
+    longitud: -103.3103212,
+    group_name: "", // sin asignar
+  },
+];
