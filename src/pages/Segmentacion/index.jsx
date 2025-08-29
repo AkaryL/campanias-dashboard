@@ -114,6 +114,7 @@ export default function Segmentacion() {
           });
           break;
         case "gender":
+          // Orden alfabético del valor guardado (m, f, mf)
           res = getStr(a.gender).localeCompare(getStr(b.gender), "es", {
             sensitivity: "base",
           });
@@ -198,7 +199,7 @@ export default function Segmentacion() {
       name: form.name.trim(),
       campaign_id: Number(form.campaign_id),
       group_name: form.group_name.trim(),
-      gender: form.gender.trim(),
+      gender: form.gender.trim(), // "m" | "f" | "mf"
       min_age: Number(form.min_age),
       max_age: Number(form.max_age),
     };
@@ -269,7 +270,7 @@ export default function Segmentacion() {
       name: rest.name.trim(),
       campaign_id: Number(rest.campaign_id),
       group_name: rest.group_name.trim(),
-      gender: rest.gender.trim(),
+      gender: rest.gender.trim(), // "m" | "f" | "mf"
       min_age: Number(rest.min_age),
       max_age: Number(rest.max_age),
     };
@@ -359,7 +360,7 @@ export default function Segmentacion() {
         </button>
       </div>
 
-      {/* GRID de cards que llena todo el ancho */}
+      {/* GRID de cards */}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
         {loadingSegments ? (
           <div className="text-slate-400">Cargando segmentos…</div>
@@ -370,17 +371,42 @@ export default function Segmentacion() {
             const g = (s.gender || "").toLowerCase();
             const isMale = g === "m";
             const isFemale = g === "f";
+            const isBoth = g === "mf" || g === "both" || g === "ambos";
 
-            // Tema por género
-            const frame =
-              isMale ? "border-blue-300" : isFemale ? "border-pink-300" : "border-slate-200";
-            const accentText =
-              isMale ? "text-blue-700" : isFemale ? "text-pink-700" : "text-slate-700";
-            const pastelBg =
-              isMale ? "bg-blue-50" : isFemale ? "bg-pink-50" : "bg-slate-50";
-            const divider =
-              isMale ? "divide-blue-200" : isFemale ? "divide-pink-200" : "divide-slate-200";
-            const genderIcon = isMale ? (
+            // Tema por género: azul (m), rosa (f), morado (ambos)
+            const frame = isBoth
+              ? "border-purple-300"
+              : isMale
+              ? "border-blue-300"
+              : isFemale
+              ? "border-pink-300"
+              : "border-slate-200";
+
+            const accentText = isBoth
+              ? "text-purple-700"
+              : isMale
+              ? "text-blue-700"
+              : isFemale
+              ? "text-pink-700"
+              : "text-slate-700";
+
+            const pastelBg = isBoth
+              ? "bg-purple-50"
+              : isMale
+              ? "bg-blue-50"
+              : isFemale
+              ? "bg-pink-50"
+              : "bg-slate-50";
+
+            const genderLabel =
+              isBoth ? "AMBOS" : isMale ? "HOMBRE" : isFemale ? "MUJER" : (s.gender ?? "—").toString().toUpperCase();
+
+            const genderIcon = isBoth ? (
+              <div className="flex items-center gap-1">
+                <FaMale className="w-5 h-5 text-purple-600" />
+                <FaFemale className="w-5 h-5 text-purple-600" />
+              </div>
+            ) : isMale ? (
               <FaMale className="w-5 h-5 text-blue-600" />
             ) : isFemale ? (
               <FaFemale className="w-5 h-5 text-pink-600" />
@@ -442,10 +468,8 @@ export default function Segmentacion() {
                   </div>
                 </div>
 
-                {/* bloque inferior con 3 columnas y divisores */}
-                <div
-                  className={`mt-auto grid grid-cols-3 ${pastelBg} rounded-2xl p-3`}
-                >
+                {/* bloque inferior info */}
+                <div className={`mt-auto grid grid-cols-3 ${pastelBg} rounded-2xl p-3`}>
                   <div className="px-2 text-center">
                     <div className="text-xs text-slate-500">Edad</div>
                     <div className={`font-medium ${accentText}`}>
@@ -456,16 +480,12 @@ export default function Segmentacion() {
                     <div className="text-xs text-slate-500">Género</div>
                     <div className="flex items-center justify-center gap-2">
                       {genderIcon}
-                      <span className={`font-medium ${accentText}`}>
-                        {(s.gender ?? "—").toUpperCase()}
-                      </span>
+                      <span className={`font-medium ${accentText}`}>{genderLabel}</span>
                     </div>
                   </div>
                   <div className="px-2 text-center border-l">
                     <div className="text-xs text-slate-500">Grupo</div>
-                    <div className={`font-medium ${accentText}`}>
-                      {s.group_name ?? "—"}
-                    </div>
+                    <div className={`font-medium ${accentText}`}>{s.group_name ?? "—"}</div>
                   </div>
                 </div>
               </article>
@@ -536,6 +556,7 @@ export default function Segmentacion() {
                   { value: "", label: "Selecciona género" },
                   { value: "m", label: "Masculino (m)" },
                   { value: "f", label: "Femenino (f)" },
+                  { value: "mf", label: "Ambos" }, // 👈 NUEVO
                 ]}
                 error={errors.gender}
               />
@@ -630,6 +651,7 @@ export default function Segmentacion() {
                 ]}
                 error={editErrors.group_name}
               />
+
               <Select
                 label="Género"
                 value={edit.gender}
@@ -638,6 +660,7 @@ export default function Segmentacion() {
                   { value: "", label: "Selecciona género" },
                   { value: "m", label: "Masculino (m)" },
                   { value: "f", label: "Femenino (f)" },
+                  { value: "mf", label: "Ambos" }, // 👈 NUEVO
                 ]}
                 error={editErrors.gender}
               />
