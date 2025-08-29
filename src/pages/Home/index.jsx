@@ -9,7 +9,7 @@ export default function Home() {
   const handleSaveRouter = async (routerActualizado) => {
     // Optimista
     setRouters(prev =>
-      prev.map(r => r.id === routerActualizado.id ? { ...r, ...routerActualizado } : r)
+      prev.map(r => (r.id === routerActualizado.id ? { ...r, ...routerActualizado } : r))
     );
     try {
       await updateRouter(routerActualizado.id, routerActualizado);
@@ -33,12 +33,23 @@ export default function Home() {
   };
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="min-w-0 w-full max-w-full flex flex-col gap-6">
       <h1 className="text-2xl md:text-3xl font-bold">Home</h1>
+
       {loadingRouters ? (
         <div className="text-sm text-slate-500">Cargando routers…</div>
       ) : (
-        <RouterTable routers={routers} onSaveRouter={handleSaveRouter} />
+        // Contenedor anti-desborde
+        <div className="-mx-4 md:mx-0 overflow-x-auto">
+          {/* Si quieres también limitar alto y permitir scroll vertical dentro: agrega max-h-[70vh] overflow-y-auto */}
+          <div className="inline-block min-w-full align-middle">
+            <RouterTable
+              routers={routers}
+              onSaveRouter={handleSaveRouter}
+              onChangeGroup={handleChangeGroup}
+            />
+          </div>
+        </div>
       )}
     </section>
   );
