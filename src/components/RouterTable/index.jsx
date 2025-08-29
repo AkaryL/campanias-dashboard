@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { FiEdit, FiX, FiTrash2, FiAlertTriangle, FiPlus } from "react-icons/fi";
 import { useCampaigns } from "../../context/CampaignsContext";
 
-const safe = (v, fallback = "vacío") =>
+const safe = (v, fallback = "-") =>
   v === null || v === undefined || v === "" ? fallback : v;
 
 const GROUPS = ["", "A", "B", "C", "Pruebas"]; // "" = sin asignar
@@ -36,8 +36,20 @@ export default function RouterTable({ routers, onSaveRouter }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState(null);
 
+  // ===== ORDENAMIENTO =====
+  const [sortKey, setSortKey] = useState("id");
+  const [sortDir, setSortDir] = useState("asc"); // "asc" | "desc"
+  const requestSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  };
+
   const norm = (v) => (v ?? "").toString().toLowerCase();
 
+  // Filtrado por búsqueda
   const filtered = useMemo(() => {
     const list = routers || [];
     const q = norm(query);
@@ -62,6 +74,52 @@ export default function RouterTable({ routers, onSaveRouter }) {
       }
     });
   }, [routers, query, searchBy]);
+
+  // Ordenamiento del resultado filtrado
+  const sorted = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    const getNum = (n) => {
+      const v = Number(n);
+      if (Number.isFinite(v)) return v;
+      return sortDir === "asc" ? Infinity : -Infinity;
+    };
+    const getStr = (s) => (s ?? "").toString();
+
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      let res = 0;
+      switch (sortKey) {
+        case "id":
+          res = getNum(a.id) - getNum(b.id);
+          break;
+        case "mac":
+          res = getStr(a.mac).localeCompare(getStr(b.mac), "es", { sensitivity: "base" });
+          break;
+        case "device_name":
+          res = getStr(a.device_name).localeCompare(getStr(b.device_name), "es", { sensitivity: "base" });
+          break;
+        case "estacion":
+          res = getStr(a.estacion).localeCompare(getStr(b.estacion), "es", { sensitivity: "base" });
+          break;
+        case "municipio":
+          res = getStr(a.municipio).localeCompare(getStr(b.municipio), "es", { sensitivity: "base" });
+          break;
+        case "latitud":
+          res = getNum(a.latitud) - getNum(b.latitud);
+          break;
+        case "longitud":
+          res = getNum(a.longitud) - getNum(b.longitud);
+          break;
+        case "group_name":
+          res = getStr(a.group_name).localeCompare(getStr(b.group_name), "es", { sensitivity: "base" });
+          break;
+        default:
+          res = 0;
+      }
+      return res * dir;
+    });
+    return arr;
+  }, [filtered, sortKey, sortDir]);
 
   const handleOpenModal = (router) => {
     setDraft({
@@ -235,20 +293,20 @@ export default function RouterTable({ routers, onSaveRouter }) {
 
           <thead className="bg-slate-100 text-slate-600">
             <tr>
-              <Th>ID</Th>
-              <Th>MAC</Th>
-              <Th>Device</Th>
-              <Th>Estación</Th>
-              <Th>Municipio</Th>
-              <Th>Latitud</Th>
-              <Th>Longitud</Th>
-              <Th>Group</Th>
+              <ThSortable label="ID" col="id" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="MAC" col="mac" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="Device" col="device_name" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="Estación" col="estacion" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="Municipio" col="municipio" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="Latitud" col="latitud" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="Longitud" col="longitud" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
+              <ThSortable label="Group" col="group_name" sortKey={sortKey} sortDir={sortDir} onSort={requestSort} />
               <Th className="text-right pr-2">Acciones</Th>
             </tr>
           </thead>
 
           <tbody>
-            {filtered.map((r) => (
+            {sorted.map((r) => (
               <tr key={r.id} className="border-t last:border-b">
                 <Td className="whitespace-nowrap">{safe(r.id)}</Td>
                 <Td className="whitespace-nowrap font-mono text-[11px]">
@@ -265,7 +323,9 @@ export default function RouterTable({ routers, onSaveRouter }) {
                 </Td>
                 <Td className="whitespace-nowrap">{safe(r.latitud)}</Td>
                 <Td className="whitespace-nowrap">{safe(r.longitud)}</Td>
-                <Td className="whitespace-nowrap">{safe(r.group_name, "—")}</Td>
+                <Td className="whitespace-nowrap">
+                  <GroupTag value={r.group_name} />
+                </Td>
                 <Td className="text-right pr-2">
                   <button
                     type="button"
@@ -289,7 +349,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
                 </Td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <tr>
                 <td colSpan={9} className="p-6 text-center text-slate-400">
                   No hay resultados
@@ -498,8 +558,54 @@ export default function RouterTable({ routers, onSaveRouter }) {
 function Th({ children, className = "" }) {
   return <th className={`text-left px-2 py-2 font-semibold ${className}`}>{children}</th>;
 }
+
+function ThSortable({ label, col, sortKey, sortDir, onSort, className = "" }) {
+  const active = sortKey === col;
+  const arrow = active ? (sortDir === "asc" ? "▲" : "▼") : "↕";
+  return (
+    <th className={`text-left px-2 py-2 font-semibold ${className}`}>
+      <button
+        type="button"
+        onClick={() => onSort(col)}
+        className={`group inline-flex items-center gap-1 select-none ${
+          active ? "text-slate-900" : "text-slate-600 hover:text-slate-900"
+        }`}
+        title={`Ordenar por ${label}`}
+      >
+        <span>{label}</span>
+        <span className={`text-[10px] ${active ? "opacity-100" : "opacity-50 group-hover:opacity-80"}`}>
+          {arrow}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 function Td({ children, className = "" }) {
   return <td className={`px-2 py-2 align-top ${className}`}>{children}</td>;
+}
+
+function GroupTag({ value }) {
+  const label = value ? value : "—";
+  const styles = (() => {
+    switch (label) {
+      case "A":
+        return "bg-blue-100 text-blue-700 border-blue-200";
+      case "B":
+        return "bg-emerald-100 text-emerald-700 border-emerald-200";
+      case "C":
+        return "bg-amber-100 text-amber-800 border-amber-200";
+      case "Pruebas":
+        return "bg-purple-100 text-purple-700 border-purple-200";
+      default:
+        return "bg-slate-100 text-slate-600 border-slate-200";
+    }
+  })();
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium border ${styles}`}>
+      {label}
+    </span>
+  );
 }
 
 function Field({ label, value, onChange, type = "text", disabled = false, error }) {

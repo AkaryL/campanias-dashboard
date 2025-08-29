@@ -87,6 +87,14 @@ function Campaigns() {
     return arr;
   }, [filtered, sortKey, sortDir]);
 
+  // Activas primero, inactivas al final (respetando el orden elegido dentro de cada grupo)
+  const ordered = useMemo(() => {
+    if (status !== "all") return sorted; // si filtras por estado, respeta tal cual
+    const actives = sorted.filter((c) => c.active);
+    const inactives = sorted.filter((c) => !c.active);
+    return [...actives, ...inactives];
+  }, [sorted, status]);
+
   // --- Modal crear (API) ---
   const [openCreate, setOpenCreate] = useState(false);
   const [form, setForm] = useState({
@@ -184,7 +192,6 @@ function Campaigns() {
       <header className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold">Campañas</h1>
-          <p className="text-slate-500">Crea y gestiona tus campañas.</p>
         </div>
         <button
           onClick={() => setOpenCreate(true)}
@@ -246,10 +253,10 @@ function Campaigns() {
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
         {loadingCampaigns ? (
           <div className="text-slate-400">Cargando campañas…</div>
-        ) : sorted.length === 0 ? (
+        ) : ordered.length === 0 ? (
           <div className="text-slate-400">No hay campañas que coincidan.</div>
         ) : (
-          sorted.map((c) => (
+          ordered.map((c) => (
             <CampaignCard
               key={c.id}
               c={c}
@@ -437,6 +444,9 @@ function Campaigns() {
 
 function CampaignCard({ c, onAskDelete, onAskEdit, deleting, updating }) {
   const frame = c.active ? "border-green-300" : "border-slate-200";
+  const prettyUrl = c?.url ? `mageova.network/${c.url}` : "Sin URL";
+  const href = c?.url ? `https://mageova.network/${c.url}` : undefined;
+
   return (
     <article
       className={`bg-white rounded-3xl border-2 ${frame} shadow-sm p-4 flex flex-col gap-3`}
@@ -484,7 +494,19 @@ function CampaignCard({ c, onAskDelete, onAskEdit, deleting, updating }) {
 
       <div className="flex items-center gap-2 text-sm text-slate-700">
         <FiLink className="text-slate-500" />
-        <span className="truncate">{c.url}</span>
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="truncate underline decoration-slate-300 hover:decoration-blue-500 hover:text-blue-700"
+            title={href}
+          >
+            {prettyUrl}
+          </a>
+        ) : (
+          <span className="text-slate-400">Sin URL</span>
+        )}
       </div>
 
       <div className="mt-auto grid grid-cols-2 gap-2 text-[12px] text-slate-500">
