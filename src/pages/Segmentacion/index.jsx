@@ -114,7 +114,7 @@ export default function Segmentacion() {
           });
           break;
         case "gender":
-          // Orden alfabético del valor guardado (m, f, mf)
+          // Orden (alfabético) entre "any", "f", "m" u otros
           res = getStr(a.gender).localeCompare(getStr(b.gender), "es", {
             sensitivity: "base",
           });
@@ -166,15 +166,9 @@ export default function Segmentacion() {
     if (!values.campaign_id) e.campaign_id = "Requerido";
     if (!values.group_name?.trim()) e.group_name = "Requerido";
     if (!values.gender?.trim()) e.gender = "Requerido";
-    if (values.min_age === "" || isNaN(Number(values.min_age)))
-      e.min_age = "Número";
-    if (values.max_age === "" || isNaN(Number(values.max_age)))
-      e.max_age = "Número";
-    if (
-      !e.min_age &&
-      !e.max_age &&
-      Number(values.min_age) > Number(values.max_age)
-    ) {
+    if (values.min_age === "" || isNaN(Number(values.min_age))) e.min_age = "Número";
+    if (values.max_age === "" || isNaN(Number(values.max_age))) e.max_age = "Número";
+    if (!e.min_age && !e.max_age && Number(values.min_age) > Number(values.max_age)) {
       e.max_age = "Debe ser ≥ mínima";
     }
     setErrors(e);
@@ -195,11 +189,13 @@ export default function Segmentacion() {
 
   const onCreate = async () => {
     if (!validate()) return;
+    // Si eligió "Ambos", mandamos "any"
+    const gender = form.gender.trim() === "any" ? "any" : form.gender.trim();
     const payload = {
       name: form.name.trim(),
       campaign_id: Number(form.campaign_id),
       group_name: form.group_name.trim(),
-      gender: form.gender.trim(), // "m" | "f" | "mf"
+      gender, // "m" | "f" | "any"
       min_age: Number(form.min_age),
       max_age: Number(form.max_age),
     };
@@ -234,15 +230,9 @@ export default function Segmentacion() {
     if (!values.campaign_id) e.campaign_id = "Requerido";
     if (!values.group_name?.trim()) e.group_name = "Requerido";
     if (!values.gender?.trim()) e.gender = "Requerido";
-    if (values.min_age === "" || isNaN(Number(values.min_age)))
-      e.min_age = "Número";
-    if (values.max_age === "" || isNaN(Number(values.max_age)))
-      e.max_age = "Número";
-    if (
-      !e.min_age &&
-      !e.max_age &&
-      Number(values.min_age) > Number(values.max_age)
-    ) {
+    if (values.min_age === "" || isNaN(Number(values.min_age))) e.min_age = "Número";
+    if (values.max_age === "" || isNaN(Number(values.max_age))) e.max_age = "Número";
+    if (!e.min_age && !e.max_age && Number(values.min_age) > Number(values.max_age)) {
       e.max_age = "Debe ser ≥ mínima";
     }
     setEditErrors(e);
@@ -255,7 +245,7 @@ export default function Segmentacion() {
       name: s.name ?? "",
       campaign_id: String(s.campaign_id ?? ""),
       group_name: s.group_name ?? "",
-      gender: s.gender ?? "",
+      gender: (s.gender ?? ""), // puede venir "m" | "f" | "any"
       min_age: String(s.min_age ?? ""),
       max_age: String(s.max_age ?? ""),
     });
@@ -266,11 +256,12 @@ export default function Segmentacion() {
   const onSaveEdit = async () => {
     if (!validateEdit()) return;
     const { id, ...rest } = edit;
+    const gender = rest.gender.trim() === "any" ? "any" : rest.gender.trim();
     const payload = {
       name: rest.name.trim(),
       campaign_id: Number(rest.campaign_id),
       group_name: rest.group_name.trim(),
-      gender: rest.gender.trim(), // "m" | "f" | "mf"
+      gender, // "m" | "f" | "any"
       min_age: Number(rest.min_age),
       max_age: Number(rest.max_age),
     };
@@ -371,9 +362,9 @@ export default function Segmentacion() {
             const g = (s.gender || "").toLowerCase();
             const isMale = g === "m";
             const isFemale = g === "f";
-            const isBoth = g === "mf" || g === "both" || g === "ambos";
+            const isBoth = g === "any" || g === "mf" || g === "both" || g === "ambos";
 
-            // Tema por género: azul (m), rosa (f), morado (ambos)
+            // Tema por género: azul (m), rosa (f), morado (any/ambos)
             const frame = isBoth
               ? "border-purple-300"
               : isMale
@@ -399,7 +390,13 @@ export default function Segmentacion() {
               : "bg-slate-50";
 
             const genderLabel =
-              isBoth ? "AMBOS" : isMale ? "HOMBRE" : isFemale ? "MUJER" : (s.gender ?? "—").toString().toUpperCase();
+              isBoth
+                ? "AMBOS"
+                : isMale
+                ? "HOMBRE"
+                : isFemale
+                ? "MUJER"
+                : (s.gender ?? "—").toString().toUpperCase();
 
             const genderIcon = isBoth ? (
               <div className="flex items-center gap-1">
@@ -422,10 +419,7 @@ export default function Segmentacion() {
                 {/* fila superior: título + fechas + acciones */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3
-                      className="text-lg font-semibold truncate"
-                      title={s.name || "—"}
-                    >
+                    <h3 className="text-lg font-semibold truncate" title={s.name || "—"}>
                       {s.name || "—"}
                     </h3>
                     <div className="text-sm text-slate-600 truncate">
@@ -453,12 +447,9 @@ export default function Segmentacion() {
                         type="button"
                         onClick={() => openConfirmDelete(s)}
                         disabled={deletingSegmentId === s.id}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-lg transition
-                          ${
-                            deletingSegmentId === s.id
-                              ? " opacity-60 cursor-not-allowed"
-                              : " hover:bg-red-50 "
-                          }`}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-lg transition ${
+                          deletingSegmentId === s.id ? " opacity-60 cursor-not-allowed" : " hover:bg-red-50 "
+                        }`}
                         aria-label={`Eliminar segmento ${s.id}`}
                         title="Eliminar"
                       >
@@ -480,7 +471,6 @@ export default function Segmentacion() {
                     <div className="text-xs text-slate-500">Género</div>
                     <div className="flex items-center justify-center gap-2">
                       {genderIcon}
-                      <span className={`font-medium ${accentText}`}>{genderLabel}</span>
                     </div>
                   </div>
                   <div className="px-2 text-center border-l">
@@ -497,28 +487,17 @@ export default function Segmentacion() {
       {/* MODAL CREAR */}
       {openCreate && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setOpenCreate(false)}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpenCreate(false)} />
           <div className="relative z-[121] w-full max-w-xl mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold">Crear segmento</h3>
-              <button
-                className="px-2 py-1 rounded-lg hover:bg-slate-100"
-                onClick={() => setOpenCreate(false)}
-              >
+              <button className="px-2 py-1 rounded-lg hover:bg-slate-100" onClick={() => setOpenCreate(false)}>
                 ✕
               </button>
             </div>
 
             <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field
-                label="Nombre"
-                value={form.name}
-                onChange={(v) => setField("name", v)}
-                error={errors.name}
-              />
+              <Field label="Nombre" value={form.name} onChange={(v) => setField("name", v)} error={errors.name} />
 
               <Select
                 label={`Campaña ${loadingCampaigns ? "(cargando…)" : ""}`}
@@ -526,10 +505,7 @@ export default function Segmentacion() {
                 onChange={(v) => setField("campaign_id", v)}
                 options={[
                   { value: "", label: "Selecciona campaña" },
-                  ...(campaigns || []).map((c) => ({
-                    value: String(c.id),
-                    label: c.name,
-                  })),
+                  ...(campaigns || []).map((c) => ({ value: String(c.id), label: c.name })),
                 ]}
                 disabled={loadingCampaigns}
                 error={errors.campaign_id}
@@ -548,6 +524,8 @@ export default function Segmentacion() {
                 ]}
                 error={errors.group_name}
               />
+
+              {/* 👇 Amb0s ahora vale "any" para la API */}
               <Select
                 label="Género"
                 value={form.gender}
@@ -556,40 +534,20 @@ export default function Segmentacion() {
                   { value: "", label: "Selecciona género" },
                   { value: "m", label: "Masculino (m)" },
                   { value: "f", label: "Femenino (f)" },
-                  { value: "mf", label: "Ambos" }, // 👈 NUEVO
+                  { value: "any", label: "Ambos" },
                 ]}
                 error={errors.gender}
               />
 
-              <Field
-                label="Edad mínima"
-                type="number"
-                value={form.min_age}
-                onChange={(v) => setField("min_age", v)}
-                error={errors.min_age}
-              />
-              <Field
-                label="Edad máxima"
-                type="number"
-                value={form.max_age}
-                onChange={(v) => setField("max_age", v)}
-                error={errors.max_age}
-              />
+              <Field label="Edad mínima" type="number" value={form.min_age} onChange={(v) => setField("min_age", v)} error={errors.min_age} />
+              <Field label="Edad máxima" type="number" value={form.max_age} onChange={(v) => setField("max_age", v)} error={errors.max_age} />
             </div>
 
             <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50"
-                onClick={() => setOpenCreate(false)}
-                disabled={creatingSegment}
-              >
+              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={() => setOpenCreate(false)} disabled={creatingSegment}>
                 Cancelar
               </button>
-              <button
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                onClick={onCreate}
-                disabled={creatingSegment}
-              >
+              <button className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60" onClick={onCreate} disabled={creatingSegment}>
                 {creatingSegment ? "Guardando…" : "Crear segmento"}
               </button>
             </div>
@@ -600,28 +558,17 @@ export default function Segmentacion() {
       {/* MODAL EDITAR */}
       {openEdit && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/40"
-            onClick={() => setOpenEdit(false)}
-          />
+          <div className="absolute inset-0 bg-black/40" onClick={() => setOpenEdit(false)} />
           <div className="relative z-[121] w-full max-w-xl mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold">Editar segmento</h3>
-              <button
-                className="px-2 py-1 rounded-lg hover:bg-slate-100"
-                onClick={() => setOpenEdit(false)}
-              >
+              <button className="px-2 py-1 rounded-lg hover:bg-slate-100" onClick={() => setOpenEdit(false)}>
                 ✕
               </button>
             </div>
 
             <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field
-                label="Nombre"
-                value={edit.name}
-                onChange={(v) => setEditField("name", v)}
-                error={editErrors.name}
-              />
+              <Field label="Nombre" value={edit.name} onChange={(v) => setEditField("name", v)} error={editErrors.name} />
 
               <Select
                 label={`Campaña ${loadingCampaigns ? "(cargando…)" : ""}`}
@@ -629,10 +576,7 @@ export default function Segmentacion() {
                 onChange={(v) => setEditField("campaign_id", v)}
                 options={[
                   { value: "", label: "Selecciona campaña" },
-                  ...(campaigns || []).map((c) => ({
-                    value: String(c.id),
-                    label: c.name,
-                  })),
+                  ...(campaigns || []).map((c) => ({ value: String(c.id), label: c.name })),
                 ]}
                 disabled={loadingCampaigns}
                 error={editErrors.campaign_id}
@@ -652,6 +596,7 @@ export default function Segmentacion() {
                 error={editErrors.group_name}
               />
 
+              {/* 👇 "Ambos" usa "any" */}
               <Select
                 label="Género"
                 value={edit.gender}
@@ -660,40 +605,20 @@ export default function Segmentacion() {
                   { value: "", label: "Selecciona género" },
                   { value: "m", label: "Masculino (m)" },
                   { value: "f", label: "Femenino (f)" },
-                  { value: "mf", label: "Ambos" }, // 👈 NUEVO
+                  { value: "any", label: "Ambos" },
                 ]}
                 error={editErrors.gender}
               />
 
-              <Field
-                label="Edad mínima"
-                type="number"
-                value={edit.min_age}
-                onChange={(v) => setEditField("min_age", v)}
-                error={editErrors.min_age}
-              />
-              <Field
-                label="Edad máxima"
-                type="number"
-                value={edit.max_age}
-                onChange={(v) => setEditField("max_age", v)}
-                error={editErrors.max_age}
-              />
+              <Field label="Edad mínima" type="number" value={edit.min_age} onChange={(v) => setEditField("min_age", v)} error={editErrors.min_age} />
+              <Field label="Edad máxima" type="number" value={edit.max_age} onChange={(v) => setEditField("max_age", v)} error={editErrors.max_age} />
             </div>
 
             <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50"
-                onClick={() => setOpenEdit(false)}
-                disabled={updatingSegment}
-              >
+              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={() => setOpenEdit(false)} disabled={updatingSegment}>
                 Cancelar
               </button>
-              <button
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60"
-                onClick={onSaveEdit}
-                disabled={updatingSegment}
-              >
+              <button className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60" onClick={onSaveEdit} disabled={updatingSegment}>
                 {updatingSegment ? "Guardando…" : "Guardar cambios"}
               </button>
             </div>
@@ -715,28 +640,17 @@ export default function Segmentacion() {
 
             <div className="px-5 py-4 space-y-2">
               <p className="text-sm text-slate-700">
-                ¿Estás seguro de eliminar el segmento{" "}
-                <b>{confirmTarget?.name ?? `#${confirmTarget?.id}`}</b>?
+                ¿Estás seguro de eliminar el segmento <b>{confirmTarget?.name ?? `#${confirmTarget?.id}`}</b>?
               </p>
               <p className="text-sm text-slate-500">Esta acción es permanente.</p>
             </div>
 
             <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
-              <button
-                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50"
-                onClick={closeConfirm}
-                disabled={deletingSegmentId === confirmTarget?.id}
-              >
+              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={closeConfirm} disabled={deletingSegmentId === confirmTarget?.id}>
                 Cancelar
               </button>
-              <button
-                className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
-                onClick={onConfirmDelete}
-                disabled={deletingSegmentId === confirmTarget?.id}
-              >
-                {deletingSegmentId === confirmTarget?.id
-                  ? "Eliminando…"
-                  : "Eliminar"}
+              <button className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60" onClick={onConfirmDelete} disabled={deletingSegmentId === confirmTarget?.id}>
+                {deletingSegmentId === confirmTarget?.id ? "Eliminando…" : "Eliminar"}
               </button>
             </div>
           </div>
@@ -752,10 +666,7 @@ function formatDateShort(iso) {
   if (!iso) return "—";
   try {
     const d = new Date(iso);
-    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    })}`;
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   } catch {
     return iso;
   }
@@ -770,9 +681,7 @@ function Field({ label, value, onChange, type = "text", error }) {
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
         className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${
-          error
-            ? "border-red-400 focus:ring-red-200"
-            : "border-slate-300 focus:ring-blue-500"
+          error ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"
         } bg-white`}
       />
       {error && <span className="text-[11px] text-red-500">{error}</span>}
@@ -789,9 +698,7 @@ function Select({ label, value, onChange, options = [], error, disabled = false 
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
         className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${
-          error
-            ? "border-red-400 focus:ring-red-200"
-            : "border-slate-300 focus:ring-blue-500"
+          error ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"
         } ${disabled ? "bg-slate-50 text-slate-400" : "bg-white"}`}
       >
         {options.map((o) => (
