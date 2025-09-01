@@ -297,8 +297,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
       {/* Header */}
-      <div className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <h2 className="text-lg font-semibold">Routers</h2>
+      <div className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-end">
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">

@@ -19,7 +19,7 @@ export default function Layout({ children }) {
               }`
             }
           >
-            Inicio
+            Routers
           </NavLink>
           <NavLink
             to="/campanias"

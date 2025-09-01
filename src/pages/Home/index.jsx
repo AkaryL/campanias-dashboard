@@ -34,7 +34,7 @@ export default function Home() {
 
   return (
     <section className="min-w-0 w-full max-w-full flex flex-col gap-6 p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Inicio</h1>
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Routers</h1>
 
       {loadingRouters ? (
         <div className="flex justify-center items-center py-12">
