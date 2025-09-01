@@ -1,4 +1,3 @@
-// src/context/CampaignsContext.jsx
 import React, { createContext, useContext, useState, useCallback, useRef } from "react";
 import axios from "axios";
 
@@ -11,8 +10,8 @@ export const CampaignsProvider = ({ children }) => {
   const [routers, setRouters] = useState([]);
   const [loadingRouters, setLoadingRouters] = useState(false);
   const [loadingUpdateRouter, setLoadingUpdateRouter] = useState(false);
-  const [creatingRouter, setCreatingRouter] = useState(false);     // 👈 NUEVO
-  const [deletingRouterId, setDeletingRouterId] = useState(null);  // ya usado
+  const [creatingRouter, setCreatingRouter] = useState(false);
+  const [deletingRouterId, setDeletingRouterId] = useState(null);
 
   const [error, setError] = useState(null);
   const prevSnapshotRef = useRef([]);
@@ -41,7 +40,6 @@ export const CampaignsProvider = ({ children }) => {
     setCreatingRouter(true);
     setError(null);
     try {
-      // Enviar todos los campos del body que tu API espera
       const body = cleanPayload(payload);
       const { data } = await axios.post(`${API}/api/v2/campaigns/routers`, body);
       setRouters((curr) => [data, ...curr]);
@@ -91,6 +89,26 @@ export const CampaignsProvider = ({ children }) => {
       setDeletingRouterId(null);
     }
   };
+
+  // ========== Groups (NUEVO) ==========
+  const [groups, setGroups] = useState([]); // p.ej. ["A","B","C"]
+  const [loadingGroups, setLoadingGroups] = useState(false);
+
+  const fetchGroups = useCallback(async () => {
+    setLoadingGroups(true);
+    setError(null);
+    try {
+      const { data } = await axios.get(`${API}/api/v2/campaigns/groups`);
+      // Asegura array de strings, sin falsy:
+      const list = Array.isArray(data) ? data.filter(Boolean) : [];
+      setGroups(list);
+    } catch (err) {
+      setError(err);
+      setGroups([]);
+    } finally {
+      setLoadingGroups(false);
+    }
+  }, [API]);
 
   // ========== Segments ==========
   const [segments, setSegments] = useState([]);
@@ -231,13 +249,18 @@ export const CampaignsProvider = ({ children }) => {
         routers,
         loadingRouters,
         loadingUpdateRouter,
-        creatingRouter,   // 👈 export
-        deletingRouterId, // 👈 export
+        creatingRouter,
+        deletingRouterId,
         fetchRouters,
-        createRouter,     // 👈 export
+        createRouter,
         updateRouter,
         deleteRouter,
         setRouters,
+
+        // groups (NUEVO)
+        groups,
+        loadingGroups,
+        fetchGroups,
 
         // segments
         segments,

@@ -1,4 +1,3 @@
-// src/pages/Segmentacion/index.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useCampaigns } from "../../context/CampaignsContext";
 import {
@@ -7,6 +6,7 @@ import {
   FiAlertTriangle,
   FiArrowUp,
   FiArrowDown,
+  FiX,
 } from "react-icons/fi";
 import { FaMale, FaFemale } from "react-icons/fa";
 
@@ -31,14 +31,20 @@ export default function Segmentacion() {
     campaigns,
     loadingCampaigns,
     fetchCampaigns,
+
+    // GROUPS (NUEVO)
+    groups,
+    loadingGroups,
+    fetchGroups,
   } = useCampaigns();
 
-  // cargar routers + segmentos + campañas al montar
+  // cargar routers + segmentos + campañas + grupos al montar
   useEffect(() => {
     fetchRouters?.();
     fetchSegments?.();
     fetchCampaigns?.();
-  }, [fetchRouters, fetchSegments, fetchCampaigns]);
+    fetchGroups?.();
+  }, [fetchRouters, fetchSegments, fetchCampaigns, fetchGroups]);
 
   // Mapa id -> nombre de campaña
   const campaignNameById = useMemo(() => {
@@ -56,6 +62,12 @@ export default function Segmentacion() {
     }
     return acc;
   }, [routers]);
+
+  // Opciones de grupo desde API
+  const groupOptions = useMemo(
+    () => [{ value: "", label: "Selecciona grupo" }, ...(groups || []).map((g) => ({ value: g, label: g }))],
+    [groups]
+  );
 
   // =========================
   //       ORDENAMIENTO
@@ -114,7 +126,6 @@ export default function Segmentacion() {
           });
           break;
         case "gender":
-          // Orden (alfabético) entre "any", "f", "m" u otros
           res = getStr(a.gender).localeCompare(getStr(b.gender), "es", {
             sensitivity: "base",
           });
@@ -189,7 +200,6 @@ export default function Segmentacion() {
 
   const onCreate = async () => {
     if (!validate()) return;
-    // Si eligió "Ambos", mandamos "any"
     const gender = form.gender.trim() === "any" ? "any" : form.gender.trim();
     const payload = {
       name: form.name.trim(),
@@ -298,65 +308,70 @@ export default function Segmentacion() {
   };
 
   return (
-    <section className="flex flex-col gap-6">
+    <section className="flex flex-col gap-6 p-6 bg-gray-50 min-h-screen">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Segmentación</h1>
-          <p className="text-slate-500">Segmentos existentes desde el backend.</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Segmentación</h1>
+          <p className="text-gray-500">Segmentos existentes desde el backend.</p>
         </div>
 
         <button
-          onClick={() => setOpenCreate(true)}
-          className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
+          onClick={() => {
+            fetchGroups?.(); // refrescar grupos al abrir
+            setOpenCreate(true);
+          }}
+          className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           + Crear nuevo segmento
         </button>
       </header>
 
-      {/* Stats de routers por grupo (opcional) */}
+      {/* Stats de routers por grupo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {Object.entries(stats).map(([group, count]) => (
           <div
             key={group}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4"
+            className="bg-white rounded-lg border border-gray-200 shadow-sm p-4"
           >
-            <div className="text-sm text-slate-500">Group {group}</div>
-            <div className="text-3xl font-bold">{count}</div>
-            <div className="text-xs text-slate-400 mt-1">routers asignados</div>
+            <div className="text-sm text-gray-500">Group {group}</div>
+            <div className="text-3xl font-bold text-gray-900">{count}</div>
+            <div className="text-xs text-gray-400 mt-1">routers asignados</div>
           </div>
         ))}
       </div>
 
       {/* Controles de ordenamiento */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-slate-600">Ordenar por:</label>
-        <select
-          value={sortKey}
-          onChange={(e) => setSortKey(e.target.value)}
-          className="px-3 py-2 rounded-xl border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          {sortOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-        <button
-          onClick={toggleDir}
-          className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-300 bg-white hover:bg-slate-50"
-          title="Cambiar dirección"
-        >
-          {sortDir === "asc" ? <FiArrowUp /> : <FiArrowDown />}
-          <span className="text-sm">{sortDir === "asc" ? "Asc" : "Desc"}</span>
-        </button>
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-4">
+        <div className="flex items-center gap-3">
+          <label className="text-sm text-gray-600">Ordenar por:</label>
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+          >
+            {sortOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={toggleDir}
+            className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm hover:bg-gray-50"
+            title="Cambiar dirección"
+          >
+            {sortDir === "asc" ? <FiArrowUp className="h-4 w-4" /> : <FiArrowDown className="h-4 w-4" />}
+            <span className="text-sm">{sortDir === "asc" ? "Asc" : "Desc"}</span>
+          </button>
+        </div>
       </div>
 
       {/* GRID de cards */}
       <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(320px,1fr))]">
         {loadingSegments ? (
-          <div className="text-slate-400">Cargando segmentos…</div>
+          <div className="text-gray-500">Cargando segmentos…</div>
         ) : sortedSegments.length === 0 ? (
-          <div className="text-slate-400">No hay segmentos.</div>
+          <div className="text-gray-500">No hay segmentos.</div>
         ) : (
           sortedSegments.map((s) => {
             const g = (s.gender || "").toLowerCase();
@@ -364,14 +379,13 @@ export default function Segmentacion() {
             const isFemale = g === "f";
             const isBoth = g === "any" || g === "mf" || g === "both" || g === "ambos";
 
-            // Tema por género: azul (m), rosa (f), morado (any/ambos)
             const frame = isBoth
               ? "border-purple-300"
               : isMale
               ? "border-blue-300"
               : isFemale
               ? "border-pink-300"
-              : "border-slate-200";
+              : "border-gray-200";
 
             const accentText = isBoth
               ? "text-purple-700"
@@ -379,7 +393,7 @@ export default function Segmentacion() {
               ? "text-blue-700"
               : isFemale
               ? "text-pink-700"
-              : "text-slate-700";
+              : "text-gray-700";
 
             const pastelBg = isBoth
               ? "bg-purple-50"
@@ -387,16 +401,7 @@ export default function Segmentacion() {
               ? "bg-blue-50"
               : isFemale
               ? "bg-pink-50"
-              : "bg-slate-50";
-
-            const genderLabel =
-              isBoth
-                ? "AMBOS"
-                : isMale
-                ? "HOMBRE"
-                : isFemale
-                ? "MUJER"
-                : (s.gender ?? "—").toString().toUpperCase();
+              : "bg-gray-50";
 
             const genderIcon = isBoth ? (
               <div className="flex items-center gap-1">
@@ -408,52 +413,52 @@ export default function Segmentacion() {
             ) : isFemale ? (
               <FaFemale className="w-5 h-5 text-pink-600" />
             ) : (
-              <FaMale className="w-5 h-5 text-slate-500 opacity-60" />
+              <FaMale className="w-5 h-5 text-gray-500 opacity-60" />
             );
 
             return (
               <article
                 key={s.id}
-                className={`h-full bg-white rounded-3xl border-2 ${frame} shadow-sm p-4 flex flex-col gap-4`}
+                className={`h-full bg-white rounded-3xl border-2 ${frame} shadow-sm p-4 flex flex-col gap-4 hover:shadow-md transition-shadow`}
               >
                 {/* fila superior: título + fechas + acciones */}
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold truncate" title={s.name || "—"}>
+                    <h3 className="text-lg font-semibold text-gray-900 truncate" title={s.name || "—"}>
                       {s.name || "—"}
                     </h3>
-                    <div className="text-sm text-slate-600 truncate">
+                    <div className="text-sm text-gray-600 truncate">
                       Campaña: {campaignNameById.get(s.campaign_id) ?? "—"}
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-2 shrink-0">
-                    <div className="text-[11px] text-slate-500 text-right leading-tight">
+                    <div className="text-[11px] text-gray-500 text-right leading-tight">
                       <div>Creado: {formatDateShort(s.created_at)}</div>
                       <div>Act.: {formatDateShort(s.updated_at)}</div>
                     </div>
                     <div className="flex items-center">
                       <button
                         type="button"
-                        onClick={() => openEditModal(s)}
-                        className="inline-flex items-center px-3 py-1.5 rounded-lg hover:bg-slate-50 transition"
+                        onClick={() => setOpenEdit(true) || openEditModal(s)}
+                        className="inline-flex items-center px-3 py-1.5 text-blue-600 hover:text-blue-800 transition"
                         aria-label={`Editar segmento ${s.id}`}
                         title="Editar"
                       >
-                        <FiEdit className="text-slate-600" />
+                        <FiEdit className="h-4 w-4" />
                       </button>
 
                       <button
                         type="button"
                         onClick={() => openConfirmDelete(s)}
                         disabled={deletingSegmentId === s.id}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-lg transition ${
-                          deletingSegmentId === s.id ? " opacity-60 cursor-not-allowed" : " hover:bg-red-50 "
+                        className={`inline-flex items-center px-3 py-1.5 text-red-600 hover:text-red-800 transition ${
+                          deletingSegmentId === s.id ? "opacity-60 cursor-not-allowed" : ""
                         }`}
                         aria-label={`Eliminar segmento ${s.id}`}
                         title="Eliminar"
                       >
-                        <FiTrash2 className="text-red-600" />
+                        <FiTrash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -462,19 +467,19 @@ export default function Segmentacion() {
                 {/* bloque inferior info */}
                 <div className={`mt-auto grid grid-cols-3 ${pastelBg} rounded-2xl p-3`}>
                   <div className="px-2 text-center">
-                    <div className="text-xs text-slate-500">Edad</div>
+                    <div className="text-xs text-gray-500">Edad</div>
                     <div className={`font-medium ${accentText}`}>
                       {(s.min_age ?? "—")}–{s.max_age ?? "—"}
                     </div>
                   </div>
-                  <div className="px-2 text-center border-l">
-                    <div className="text-xs text-slate-500">Género</div>
+                  <div className="px-2 text-center border-l border-gray-300">
+                    <div className="text-xs text-gray-500">Género</div>
                     <div className="flex items-center justify-center gap-2">
                       {genderIcon}
                     </div>
                   </div>
-                  <div className="px-2 text-center border-l">
-                    <div className="text-xs text-slate-500">Grupo</div>
+                  <div className="px-2 text-center border-l border-gray-300">
+                    <div className="text-xs text-gray-500">Grupo</div>
                     <div className={`font-medium ${accentText}`}>{s.group_name ?? "—"}</div>
                   </div>
                 </div>
@@ -488,15 +493,15 @@ export default function Segmentacion() {
       {openCreate && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpenCreate(false)} />
-          <div className="relative z-[121] w-full max-w-xl mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
-            <div className="px-5 py-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Crear segmento</h3>
-              <button className="px-2 py-1 rounded-lg hover:bg-slate-100" onClick={() => setOpenCreate(false)}>
-                ✕
+          <div className="relative z-[121] w-full max-w-xl mx-4 rounded-lg bg-white shadow-xl border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Crear segmento</h3>
+              <button className="p-2 rounded-lg hover:bg-gray-100" onClick={() => setOpenCreate(false)}>
+                <FiX className="h-5 w-5 text-gray-500" />
               </button>
             </div>
 
-            <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Nombre" value={form.name} onChange={(v) => setField("name", v)} error={errors.name} />
 
               <Select
@@ -512,20 +517,14 @@ export default function Segmentacion() {
               />
 
               <Select
-                label="Grupo"
+                label={`Grupo ${loadingGroups ? "(cargando…)" : ""}`}
                 value={form.group_name}
                 onChange={(v) => setField("group_name", v)}
-                options={[
-                  { value: "", label: "Selecciona grupo" },
-                  { value: "A", label: "A" },
-                  { value: "B", label: "B" },
-                  { value: "C", label: "C" },
-                  { value: "Pruebas", label: "Pruebas" },
-                ]}
+                options={groupOptions}
+                disabled={loadingGroups}
                 error={errors.group_name}
               />
 
-              {/* 👇 Amb0s ahora vale "any" para la API */}
               <Select
                 label="Género"
                 value={form.gender}
@@ -543,11 +542,11 @@ export default function Segmentacion() {
               <Field label="Edad máxima" type="number" value={form.max_age} onChange={(v) => setField("max_age", v)} error={errors.max_age} />
             </div>
 
-            <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
-              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={() => setOpenCreate(false)} disabled={creatingSegment}>
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
+              <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50" onClick={() => setOpenCreate(false)} disabled={creatingSegment}>
                 Cancelar
               </button>
-              <button className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60" onClick={onCreate} disabled={creatingSegment}>
+              <button className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50" onClick={onCreate} disabled={creatingSegment}>
                 {creatingSegment ? "Guardando…" : "Crear segmento"}
               </button>
             </div>
@@ -559,15 +558,15 @@ export default function Segmentacion() {
       {openEdit && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpenEdit(false)} />
-          <div className="relative z-[121] w-full max-w-xl mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
-            <div className="px-5 py-4 border-b flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Editar segmento</h3>
-              <button className="px-2 py-1 rounded-lg hover:bg-slate-100" onClick={() => setOpenEdit(false)}>
-                ✕
+          <div className="relative z-[121] w-full max-w-xl mx-4 rounded-lg bg-white shadow-xl border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Editar segmento</h3>
+              <button className="p-2 rounded-lg hover:bg-gray-100" onClick={() => setOpenEdit(false)}>
+                <FiX className="h-5 w-5 text-gray-500" />
               </button>
             </div>
 
-            <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field label="Nombre" value={edit.name} onChange={(v) => setEditField("name", v)} error={editErrors.name} />
 
               <Select
@@ -583,20 +582,14 @@ export default function Segmentacion() {
               />
 
               <Select
-                label="Grupo"
+                label={`Grupo ${loadingGroups ? "(cargando…)" : ""}`}
                 value={edit.group_name}
                 onChange={(v) => setEditField("group_name", v)}
-                options={[
-                  { value: "", label: "Selecciona grupo" },
-                  { value: "A", label: "A" },
-                  { value: "B", label: "B" },
-                  { value: "C", label: "C" },
-                  { value: "Pruebas", label: "Pruebas" },
-                ]}
+                options={groupOptions}
+                disabled={loadingGroups}
                 error={editErrors.group_name}
               />
 
-              {/* 👇 "Ambos" usa "any" */}
               <Select
                 label="Género"
                 value={edit.gender}
@@ -614,11 +607,11 @@ export default function Segmentacion() {
               <Field label="Edad máxima" type="number" value={edit.max_age} onChange={(v) => setEditField("max_age", v)} error={editErrors.max_age} />
             </div>
 
-            <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
-              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={() => setOpenEdit(false)} disabled={updatingSegment}>
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
+              <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50" onClick={() => setOpenEdit(false)} disabled={updatingSegment}>
                 Cancelar
               </button>
-              <button className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60" onClick={onSaveEdit} disabled={updatingSegment}>
+              <button className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-700 disabled:opacity-50" onClick={onSaveEdit} disabled={updatingSegment}>
                 {updatingSegment ? "Guardando…" : "Guardar cambios"}
               </button>
             </div>
@@ -630,26 +623,26 @@ export default function Segmentacion() {
       {confirmOpen && (
         <div className="fixed inset-0 z-[140] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={closeConfirm} />
-          <div className="relative z-[141] w-full max-w-lg mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
-            <div className="px-5 py-4 border-b flex items-center gap-3">
+          <div className="relative z-[141] w-full max-w-lg mx-4 rounded-lg bg-white shadow-xl border border-gray-200">
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3">
               <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-red-100">
                 <FiAlertTriangle className="text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold">Eliminar segmento</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Eliminar segmento</h3>
             </div>
 
-            <div className="px-5 py-4 space-y-2">
-              <p className="text-sm text-slate-700">
-                ¿Estás seguro de eliminar el segmento <b>{confirmTarget?.name ?? `#${confirmTarget?.id}`}</b>?
+            <div className="px-6 py-4 space-y-2">
+              <p className="text-sm text-gray-700">
+                ¿Estás seguro de eliminar el segmento <span className="font-medium">{confirmTarget?.name ?? `#${confirmTarget?.id}`}</span>?
               </p>
-              <p className="text-sm text-slate-500">Esta acción es permanente.</p>
+              <p className="text-sm text-gray-500">Esta acción es permanente.</p>
             </div>
 
-            <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
-              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={closeConfirm} disabled={deletingSegmentId === confirmTarget?.id}>
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-end gap-2">
+              <button className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50" onClick={closeConfirm} disabled={deletingSegmentId === confirmTarget?.id}>
                 Cancelar
               </button>
-              <button className="px-4 py-2 rounded-xl bg-red-600 text-white hover:bg-red-700 disabled:opacity-60" onClick={onConfirmDelete} disabled={deletingSegmentId === confirmTarget?.id}>
+              <button className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm hover:bg-red-700 disabled:opacity-50" onClick={onConfirmDelete} disabled={deletingSegmentId === confirmTarget?.id}>
                 {deletingSegmentId === confirmTarget?.id ? "Eliminando…" : "Eliminar"}
               </button>
             </div>
@@ -675,16 +668,16 @@ function formatDateShort(iso) {
 function Field({ label, value, onChange, type = "text", error }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium text-slate-600">{label}</label>
+      <label className="text-sm font-medium text-gray-700">{label}</label>
       <input
         type={type}
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
-        className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${
-          error ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"
+        className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+          error ? "border-red-300" : "border-gray-300"
         } bg-white`}
       />
-      {error && <span className="text-[11px] text-red-500">{error}</span>}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
 }
@@ -692,14 +685,14 @@ function Field({ label, value, onChange, type = "text", error }) {
 function Select({ label, value, onChange, options = [], error, disabled = false }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-medium text-slate-600">{label}</label>
+      <label className="text-sm font-medium text-gray-700">{label}</label>
       <select
         value={value ?? ""}
         onChange={(e) => onChange?.(e.target.value)}
         disabled={disabled}
-        className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${
-          error ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"
-        } ${disabled ? "bg-slate-50 text-slate-400" : "bg-white"}`}
+        className={`px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${
+          error ? "border-red-300" : "border-gray-300"
+        } ${disabled ? "bg-gray-50 text-gray-400" : "bg-white"}`}
       >
         {options.map((o) => (
           <option key={`${o.value}-${o.label}`} value={o.value}>
@@ -707,7 +700,7 @@ function Select({ label, value, onChange, options = [], error, disabled = false 
           </option>
         ))}
       </select>
-      {error && <span className="text-[11px] text-red-500">{error}</span>}
+      {error && <span className="text-xs text-red-600">{error}</span>}
     </div>
   );
 }

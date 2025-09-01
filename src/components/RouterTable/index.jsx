@@ -1,15 +1,30 @@
 // src/components/RouterTable.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { FiEdit, FiX, FiTrash2, FiAlertTriangle, FiPlus } from "react-icons/fi";
 import { useCampaigns } from "../../context/CampaignsContext";
 
 const safe = (v, fallback = "-") =>
   v === null || v === undefined || v === "" ? fallback : v;
 
-const GROUPS = ["", "A", "B", "C", "Pruebas"]; // "" = sin asignar
-
 export default function RouterTable({ routers, onSaveRouter }) {
-  const { createRouter, creatingRouter, deleteRouter, deletingRouterId } = useCampaigns();
+  const {
+    createRouter,
+    creatingRouter,
+    deleteRouter,
+    deletingRouterId,
+    // grupos desde el contexto
+    groups,
+    loadingGroups,
+    fetchGroups,
+  } = useCampaigns();
+
+  // Cargar grupos al montar
+  useEffect(() => {
+    fetchGroups?.();
+  }, [fetchGroups]);
+
+  // Opciones de groups con "—" (vacío) al inicio
+  const GROUP_OPTIONS = useMemo(() => ["", ...(groups || [])], [groups]);
 
   const [searchBy, setSearchBy] = useState("all");
   const [query, setQuery] = useState("");
@@ -30,6 +45,10 @@ export default function RouterTable({ routers, onSaveRouter }) {
     longitud: "",
     group_name: "",
   });
+  // Modo de grupo para CREAR: 'select' usa lista existente, 'custom' usa input nuevo
+  const [groupMode, setGroupMode] = useState("select");
+  const [customGroup, setCustomGroup] = useState("");
+
   const [errors, setErrors] = useState({});
 
   // DELETE confirm
@@ -38,7 +57,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
 
   // ===== ORDENAMIENTO =====
   const [sortKey, setSortKey] = useState("id");
-  const [sortDir, setSortDir] = useState("asc"); // "asc" | "desc"
+  const [sortDir, setSortDir] = useState("asc");
   const requestSort = (key) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else {
@@ -75,7 +94,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
     });
   }, [routers, query, searchBy]);
 
-  // Ordenamiento del resultado filtrado
+  // Ordenamiento
   const sorted = useMemo(() => {
     const dir = sortDir === "asc" ? 1 : -1;
     const getNum = (n) => {
@@ -121,6 +140,26 @@ export default function RouterTable({ routers, onSaveRouter }) {
     return arr;
   }, [filtered, sortKey, sortDir]);
 
+  // ===== PAGINACIÓN =====
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, searchBy, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil((sorted?.length || 0) / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [totalPages, page]);
+
+  const paged = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    const end = page * PAGE_SIZE;
+    return sorted.slice(start, end);
+  }, [sorted, page]);
+
   const handleOpenModal = (router) => {
     setDraft({
       id: router.id ?? "",
@@ -152,17 +191,26 @@ export default function RouterTable({ routers, onSaveRouter }) {
     setDraft(null);
   };
 
-  const handleSave = () => {
-    if (onSaveRouter && draft) onSaveRouter(draft);
-    handleClose();
-  };
-
   const onKeyDownModal = (e) => {
     if (e.key === "Escape") handleClose();
   };
 
   // ==== Crear ====
   const setField = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  // cuando cambia el select de grupo en CREAR
+  const onChangeGroupCreate = (e) => {
+    const val = e.target.value;
+    if (val === "__OTHER__") {
+      setGroupMode("custom");
+      setField("group_name", ""); // limpiamos lo seleccionado
+      setCustomGroup("");
+    } else {
+      setGroupMode("select");
+      setField("group_name", val);
+      setCustomGroup("");
+    }
+  };
 
   const validate = () => {
     const e = {};
@@ -173,7 +221,13 @@ export default function RouterTable({ routers, onSaveRouter }) {
     if (!form.municipio?.trim()) e.municipio = "Requerido";
     if (form.latitud === "" || isNaN(Number(form.latitud))) e.latitud = "Número";
     if (form.longitud === "" || isNaN(Number(form.longitud))) e.longitud = "Número";
-    if (!form.group_name?.trim()) e.group_name = "Requerido";
+
+    if (groupMode === "select") {
+      if (!form.group_name?.trim()) e.group_name = "Requerido";
+    } else {
+      if (!customGroup.trim()) e.custom_group = "Requerido";
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -189,11 +243,14 @@ export default function RouterTable({ routers, onSaveRouter }) {
       longitud: "",
       group_name: "",
     });
+    setCustomGroup("");
+    setGroupMode("select");
     setErrors({});
   };
 
   const onCreate = async () => {
     if (!validate()) return;
+
     const payload = {
       serial: form.serial.trim(),
       mac: form.mac.trim(),
@@ -202,8 +259,12 @@ export default function RouterTable({ routers, onSaveRouter }) {
       municipio: form.municipio.trim(),
       latitud: Number(form.latitud),
       longitud: Number(form.longitud),
-      group_name: form.group_name.trim(),
+      group_name:
+        groupMode === "custom"
+          ? customGroup.trim()
+          : form.group_name.trim(),
     };
+
     try {
       await createRouter(payload);
       resetForm();
@@ -235,7 +296,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-      {/* Header de tabla */}
+      {/* Header */}
       <div className="p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h2 className="text-lg font-semibold">Routers</h2>
 
@@ -276,7 +337,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
         </div>
       </div>
 
-      {/* Tabla compacta que no se desborda */}
+      {/* Tabla */}
       <div className="w-full overflow-x-hidden">
         <table className="table-auto w-full text-xs leading-tight">
           <colgroup>
@@ -306,21 +367,13 @@ export default function RouterTable({ routers, onSaveRouter }) {
           </thead>
 
           <tbody>
-            {sorted.map((r) => (
+            {paged.map((r) => (
               <tr key={r.id} className="border-t last:border-b">
                 <Td className="whitespace-nowrap">{safe(r.id)}</Td>
-                <Td className="whitespace-nowrap font-mono text-[11px]">
-                  {safe(r.mac)}
-                </Td>
-                <Td className="whitespace-normal break-words max-w-[18ch]">
-                  {safe(r.device_name)}
-                </Td>
-                <Td className="whitespace-normal break-words max-w-[16ch]">
-                  {safe(r.estacion)}
-                </Td>
-                <Td className="whitespace-normal break-words max-w-[14ch]">
-                  {safe(r.municipio)}
-                </Td>
+                <Td className="whitespace-nowrap font-mono text-[11px]">{safe(r.mac)}</Td>
+                <Td className="whitespace-normal break-words max-w-[18ch]">{safe(r.device_name)}</Td>
+                <Td className="whitespace-normal break-words max-w-[16ch]">{safe(r.estacion)}</Td>
+                <Td className="whitespace-normal break-words max-w-[14ch]">{safe(r.municipio)}</Td>
                 <Td className="whitespace-nowrap">{safe(r.latitud)}</Td>
                 <Td className="whitespace-nowrap">{safe(r.longitud)}</Td>
                 <Td className="whitespace-nowrap">
@@ -360,7 +413,16 @@ export default function RouterTable({ routers, onSaveRouter }) {
         </table>
       </div>
 
-      {/* Modal EDITAR */}
+      {/* Paginación */}
+      <PaginationFooter
+        page={page}
+        setPage={setPage}
+        total={sorted.length}
+        pageSize={PAGE_SIZE}
+        totalPages={totalPages}
+      />
+
+      {/* Modal EDITAR (se queda con lista de grupos existente) */}
       {open && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center"
@@ -372,11 +434,7 @@ export default function RouterTable({ routers, onSaveRouter }) {
           <div className="relative z-[101] w-full max-w-2xl mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
             <div className="flex items-center justify-between px-5 py-4 border-b">
               <h3 className="text-lg font-semibold">Editar router</h3>
-              <button
-                className="p-2 rounded-lg hover:bg-slate-100"
-                onClick={handleClose}
-                aria-label="Cerrar"
-              >
+              <button className="p-2 rounded-lg hover:bg-slate-100" onClick={handleClose} aria-label="Cerrar">
                 <FiX className="text-slate-600" />
               </button>
             </div>
@@ -384,60 +442,35 @@ export default function RouterTable({ routers, onSaveRouter }) {
             <div className="px-5 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Field label="ID" value={draft?.id} onChange={() => {}} disabled />
-                <Field
-                  label="MAC"
-                  value={draft?.mac}
-                  onChange={(v) => setDraft((d) => ({ ...d, mac: v }))}
-                />
-                <Field
-                  label="Device"
-                  value={draft?.device_name}
-                  onChange={(v) => setDraft((d) => ({ ...d, device_name: v }))}
-                />
-                <Field
-                  label="Estación"
-                  value={draft?.estacion}
-                  onChange={(v) => setDraft((d) => ({ ...d, estacion: v }))}
-                />
-                <Field
-                  label="Municipio"
-                  value={draft?.municipio}
-                  onChange={(v) => setDraft((d) => ({ ...d, municipio: v }))}
-                />
-                <Field
-                  label="Latitud"
-                  value={draft?.latitud}
-                  onChange={(v) => setDraft((d) => ({ ...d, latitud: v }))}
-                />
-                <Field
-                  label="Longitud"
-                  value={draft?.longitud}
-                  onChange={(v) => setDraft((d) => ({ ...d, longitud: v }))}
-                />
+                <Field label="MAC" value={draft?.mac} onChange={(v) => setDraft((d) => ({ ...d, mac: v }))} />
+                <Field label="Device" value={draft?.device_name} onChange={(v) => setDraft((d) => ({ ...d, device_name: v }))} />
+                <Field label="Estación" value={draft?.estacion} onChange={(v) => setDraft((d) => ({ ...d, estacion: v }))} />
+                <Field label="Municipio" value={draft?.municipio} onChange={(v) => setDraft((d) => ({ ...d, municipio: v }))} />
+                <Field label="Latitud" value={draft?.latitud} onChange={(v) => setDraft((d) => ({ ...d, latitud: v }))} />
+                <Field label="Longitud" value={draft?.longitud} onChange={(v) => setDraft((d) => ({ ...d, longitud: v }))} />
+
+                {/* Select de grupos dinámico (sin 'Otro' en editar) */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-medium text-slate-600">Group</label>
                   <select
                     className="px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     value={draft?.group_name ?? ""}
-                    onChange={(e) =>
-                      setDraft((d) => ({ ...d, group_name: e.target.value }))
-                    }
+                    onChange={(e) => setDraft((d) => ({ ...d, group_name: e.target.value }))}
+                    disabled={loadingGroups}
                   >
-                    {GROUPS.map((g) => (
+                    {GROUP_OPTIONS.map((g) => (
                       <option key={g} value={g}>
                         {g === "" ? "—" : g}
                       </option>
                     ))}
                   </select>
+                  {loadingGroups && <span className="text-[11px] text-slate-500">Cargando grupos…</span>}
                 </div>
               </div>
             </div>
 
             <div className="px-5 py-4 border-t flex items-center justify-end gap-3">
-              <button
-                className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50"
-                onClick={handleClose}
-              >
+              <button className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50" onClick={handleClose}>
                 Cancelar
               </button>
               <button
@@ -454,19 +487,14 @@ export default function RouterTable({ routers, onSaveRouter }) {
         </div>
       )}
 
-      {/* Modal CREAR */}
+      {/* Modal CREAR (con 'Otro…') */}
       {openCreate && (
         <div className="fixed inset-0 z-[105] flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => setOpenCreate(false)} />
           <div className="relative z-[106] w-full max-w-2xl mx-4 rounded-2xl bg-white shadow-xl border border-slate-200">
             <div className="px-5 py-4 border-b flex items-center justify-between">
               <h3 className="text-lg font-semibold">Nuevo router</h3>
-              <button
-                className="px-2 py-1 rounded-lg hover:bg-slate-100"
-                onClick={() => setOpenCreate(false)}
-              >
-                ✕
-              </button>
+              <button className="px-2 py-1 rounded-lg hover:bg-slate-100" onClick={() => setOpenCreate(false)}>✕</button>
             </div>
 
             <div className="px-5 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -477,20 +505,47 @@ export default function RouterTable({ routers, onSaveRouter }) {
               <Field label="Municipio" value={form.municipio} onChange={(v) => setField("municipio", v)} error={errors.municipio} />
               <Field label="Latitud" type="number" value={form.latitud} onChange={(v) => setField("latitud", v)} error={errors.latitud} />
               <Field label="Longitud" type="number" value={form.longitud} onChange={(v) => setField("longitud", v)} error={errors.longitud} />
+
+              {/* Grupo: select + opción Otro… */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-medium text-slate-600">Grupo</label>
                 <select
-                  value={form.group_name}
-                  onChange={(e) => setField("group_name", e.target.value)}
-                  className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${errors.group_name ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"} bg-white`}
+                  value={groupMode === "custom" ? "__OTHER__" : (form.group_name ?? "")}
+                  onChange={onChangeGroupCreate}
+                  className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${
+                    errors.group_name ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"
+                  } bg-white`}
+                  disabled={loadingGroups}
                 >
-                  <option value="">Selecciona grupo</option>
-                  {GROUPS.filter(Boolean).map((g) => (
+                  <option value="">{loadingGroups ? "Cargando…" : "Selecciona grupo"}</option>
+                  {(groups || []).map((g) => (
                     <option key={g} value={g}>{g}</option>
                   ))}
+                  <option value="__OTHER__">Otro…</option>
                 </select>
-                {errors.group_name && <span className="text-[11px] text-red-500">{errors.group_name}</span>}
+                {groupMode === "select" && errors.group_name && (
+                  <span className="text-[11px] text-red-500">{errors.group_name}</span>
+                )}
               </div>
+
+              {/* Input visible SOLO si se elige 'Otro…' */}
+              {groupMode === "custom" && (
+                <div className="flex flex-col gap-1.5 md:col-span-1">
+                  <label className="text-xs font-medium text-slate-600">Nuevo grupo</label>
+                  <input
+                    type="text"
+                    value={customGroup}
+                    onChange={(e) => setCustomGroup(e.target.value)}
+                    className={`px-3 py-2 rounded-xl border focus:outline-none focus:ring-2 ${
+                      errors.custom_group ? "border-red-400 focus:ring-red-200" : "border-slate-300 focus:ring-blue-500"
+                    } bg-white`}
+                    placeholder="Escribe el nombre del grupo"
+                  />
+                  {errors.custom_group && (
+                    <span className="text-[11px] text-red-500">{errors.custom_group}</span>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="px-5 py-4 border-t flex items-center justify-end gap-2">
@@ -558,7 +613,6 @@ export default function RouterTable({ routers, onSaveRouter }) {
 function Th({ children, className = "" }) {
   return <th className={`text-left px-2 py-2 font-semibold ${className}`}>{children}</th>;
 }
-
 function ThSortable({ label, col, sortKey, sortDir, onSort, className = "" }) {
   const active = sortKey === col;
   const arrow = active ? (sortDir === "asc" ? "▲" : "▼") : "↕";
@@ -573,18 +627,14 @@ function ThSortable({ label, col, sortKey, sortDir, onSort, className = "" }) {
         title={`Ordenar por ${label}`}
       >
         <span>{label}</span>
-        <span className={`text-[10px] ${active ? "opacity-100" : "opacity-50 group-hover:opacity-80"}`}>
-          {arrow}
-        </span>
+        <span className={`text-[10px] ${active ? "opacity-100" : "opacity-50 group-hover:opacity-80"}`}>{arrow}</span>
       </button>
     </th>
   );
 }
-
 function Td({ children, className = "" }) {
   return <td className={`px-2 py-2 align-top ${className}`}>{children}</td>;
 }
-
 function GroupTag({ value }) {
   const label = value ? value : "—";
   const styles = (() => {
@@ -607,7 +657,6 @@ function GroupTag({ value }) {
     </span>
   );
 }
-
 function Field({ label, value, onChange, type = "text", disabled = false, error }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -622,6 +671,78 @@ function Field({ label, value, onChange, type = "text", disabled = false, error 
         } ${disabled ? "bg-slate-50 text-slate-400" : "bg-white"}`}
       />
       {error && <span className="text-[11px] text-red-500">{error}</span>}
+    </div>
+  );
+}
+
+/* ===== Helpers de paginación ===== */
+function getPageList(totalPages, currentPage) {
+  const maxBtns = 7;
+  if (totalPages <= maxBtns) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+  const pages = [];
+  const showLeftEllipsis = currentPage > 4;
+  const showRightEllipsis = currentPage < totalPages - 3;
+
+  pages.push(1);
+
+  let start = Math.max(2, currentPage - 1);
+  let end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (!showLeftEllipsis) {
+    start = 2;
+    end = 4;
+  }
+  if (!showRightEllipsis) {
+    start = totalPages - 3;
+    end = totalPages - 1;
+  }
+
+  if (showLeftEllipsis) pages.push("…");
+  for (let p = start; p <= end; p++) pages.push(p);
+  if (showRightEllipsis) pages.push("…");
+
+  pages.push(totalPages);
+  return pages;
+}
+function PageBtn({ children, onClick, disabled, active = false, ariaLabel }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={[
+        "min-w-8 h-8 px-2 rounded-lg text-sm border transition select-none",
+        active ? "bg-blue-600 text-white border-blue-600" : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50",
+        disabled ? "opacity-50 cursor-not-allowed" : "",
+      ].join(" ")}
+    >
+      {children}
+    </button>
+  );
+}
+function PaginationFooter({ page, setPage, total, pageSize, totalPages }) {
+  return (
+    <div className="px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-t">
+      <span className="text-xs text-slate-500">
+        Mostrando <b>{total === 0 ? 0 : (page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)}</b> de <b>{total}</b> routers
+      </span>
+      <div className="inline-flex items-center gap-1">
+        <PageBtn disabled={page === 1} onClick={() => setPage(1)} ariaLabel="Primera página">«</PageBtn>
+        <PageBtn disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))} ariaLabel="Página anterior">‹</PageBtn>
+        {getPageList(totalPages, page).map((p, i) =>
+          p === "…" ? (
+            <span key={`e-${i}`} className="px-2 text-slate-400 select-none">…</span>
+          ) : (
+            <PageBtn key={p} active={p === page} onClick={() => setPage(p)} ariaLabel={`Página ${p}`}>
+              {p}
+            </PageBtn>
+          )
+        )}
+        <PageBtn disabled={page === totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))} ariaLabel="Página siguiente">›</PageBtn>
+        <PageBtn disabled={page === totalPages} onClick={() => setPage(totalPages)} ariaLabel="Última página">»</PageBtn>
+      </div>
     </div>
   );
 }

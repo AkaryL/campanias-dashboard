@@ -33,16 +33,18 @@ export default function Home() {
   };
 
   return (
-    <section className="min-w-0 w-full max-w-full flex flex-col gap-6">
-      <h1 className="text-2xl md:text-3xl font-bold">Home</h1>
+    <section className="min-w-0 w-full max-w-full flex flex-col gap-6 p-6 bg-gray-50 min-h-screen">
+      <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Inicio</h1>
 
       {loadingRouters ? (
-        <div className="text-sm text-slate-500">Cargando routers…</div>
+        <div className="flex justify-center items-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3 text-sm text-gray-500">Cargando routers…</span>
+        </div>
       ) : (
         // Contenedor anti-desborde
-        <div className="-mx-4 md:mx-0 overflow-x-auto">
-          {/* Si quieres también limitar alto y permitir scroll vertical dentro: agrega max-h-[70vh] overflow-y-auto */}
-          <div className="inline-block min-w-full align-middle">
+        <div className="w-full overflow-x-auto bg-white rounded-lg shadow">
+          <div className="min-w-full">
             <RouterTable
               routers={routers}
               onSaveRouter={handleSaveRouter}
