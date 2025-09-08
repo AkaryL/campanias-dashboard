@@ -29,7 +29,7 @@ function RedirectIfAuthed() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/segmentacion">
       <Routes>
         {/* Pública */}
         <Route path="/login" element={<RedirectIfAuthed />} />
