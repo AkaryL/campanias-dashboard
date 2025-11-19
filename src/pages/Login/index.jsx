@@ -33,7 +33,7 @@ export default function Login() {
         <div className="text-center">
           <div className="inline-flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10">
-              <img src="/icon_html.ico" alt="Logo" className="w-8 h-8" />
+              <img src="./icon_html.ico" alt="Logo" className="w-8 h-8" />
             </div>
             <h1 className="text-2xl font-semibold text-white">Segmentacion de Campañas</h1>
           </div>

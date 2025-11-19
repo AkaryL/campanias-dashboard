@@ -1,4 +1,5 @@
 import { NavLink } from "react-router-dom";
+import logo from "../../../public/icon_html.ico";
 
 export default function Layout({ children }) {
   return (
@@ -6,7 +7,7 @@ export default function Layout({ children }) {
       {/* Sidebar fijo */}
       <aside className="fixed inset-y-0 left-0 w-42 bg-indigo-900 text-white p-6 hidden md:flex flex-col shadow-lg">
         <div className="text-xl font-bold mb-8 text-white flex items-center space-x-2">
-          <img src="/public/icon_html.ico" alt="Logo" className="w-5 h-5 text-white" />
+          <img src={logo} alt="Logo" className="w-5 h-5 text-white" />
           <span className="text-[20px]">Campañas</span>
         </div>
         <nav className="flex flex-col gap-1">
